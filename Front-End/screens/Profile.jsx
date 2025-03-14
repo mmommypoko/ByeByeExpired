@@ -1,92 +1,127 @@
 import React, { useState } from "react";
 import { 
   View, Text, Image, TouchableOpacity, 
-  StyleSheet, ImageBackground, Dimensions, TextInput 
+  StyleSheet, ImageBackground, Dimensions, TextInput, 
+  TouchableWithoutFeedback, Keyboard, Alert 
 } from "react-native";
+import { useNavigation } from '@react-navigation/native';
+import axios from 'axios';
 
-// ดึงขนาดหน้าจอเพื่อปรับภาพให้เหมาะสม
 const { width } = Dimensions.get("window");
 
-const ProfileScreen = ({ navigation }) => {
-  const [name, setName] = useState("Ebola Coronana"); // ชื่อโปรไฟล์
-  const [isEditing, setIsEditing] = useState(false); // สถานะการแก้ไขชื่อ
+const ProfileScreen = ({ route }) => {
+  const [name, setName] = useState("Ebola Coronana");
+  const [isEditing, setIsEditing] = useState(false);
+  const navigation = useNavigation();
 
-  // ฟังก์ชันสำหรับเปิด/ปิดโหมดแก้ไขชื่อ
-  const handleEditName = () => {
-    setIsEditing(!isEditing); // เปลี่ยนสถานะการแก้ไข
-  };
+  // ฟังก์ชันสำหรับลบบัญชี
+  const deleteAccount = async () => {
+    console.log(route.params);
+    const userId = route?.params?.userId;
+    if (!userId) {
+      Alert.alert("ข้อมูลไม่ครบถ้วน", "ไม่พบ userId");
+      return;
+    }
 
-  // ฟังก์ชันสำหรับการเปลี่ยนชื่อ
-  const handleChangeName = (newName) => {
-    setName(newName); // เปลี่ยนชื่อที่เก็บใน state
+  // แสดงการแจ้งเตือนก่อนทำการลบบัญชี
+  Alert.alert(
+    "ลบบัญชี",
+    "คุณแน่ใจหรือว่าต้องการลบบัญชีนี้? การลบไม่สามารถกู้คืนได้.",
+    [
+      { text: "ยกเลิก" },
+      { text: "ลบบัญชี", onPress: async () => {
+        try {
+          // ส่ง request ลบบัญชี
+          const response = await axios.delete('https://bug-free-telegram-x5597wr5w69gc9qr9-5001.app.github.dev/delete_account', {
+            data: { user_id: userId },
+          });
+          if (response.status === 200) {
+            Alert.alert('บัญชีของคุณถูกลบเรียบร้อยแล้ว');
+            navigation.navigate("Login"); // กลับไปที่หน้าล็อกอินหลังลบบัญชี
+          }
+        } catch (error) {
+          console.error(error);
+          Alert.alert('เกิดข้อผิดพลาดในการลบบัญชี');
+        }
+      }},
+    ]
+  );
+};
+
+  const handleOutsidePress = () => {
+    Keyboard.dismiss();
   };
 
   return (
-    <ImageBackground 
-      source={require("../assets/images/background profile.png")} 
-      style={styles.background}
-    >
-      {/* ภาพพื้นหลังของโปรไฟล์ */}
-      <Image 
-        source={require("../assets/images/ground profile.png")} 
-        style={styles.profileBackground} 
-      />
-
-      {/* หัวข้อ My Profile */}
-      <View style={styles.myProfileContainer}>
-        <Text style={styles.myProfileText}>My Profile</Text>
-      </View>
-
-      {/* ปุ่ม Home (ไปยังหน้า Overview) */}
-      <TouchableOpacity 
-        style={styles.topRightButton} 
-        onPress={() => navigation.navigate("Overview")}
+    <TouchableWithoutFeedback onPress={handleOutsidePress}>
+      <ImageBackground 
+        source={require("../assets/images/background profile.png")} 
+        style={styles.background}
       >
         <Image 
-          source={require("../assets/images/home.png")} 
-          style={styles.topRightIcon} 
+          source={require("../assets/images/ground profile.png")} 
+          style={styles.profileBackground} 
         />
-      </TouchableOpacity>
 
-      {/* ข้อมูลโปรไฟล์ */}
-      <View style={styles.profileContainer}>
-        <Image 
-          source={require("../assets/images/profile11.png")} 
-          style={styles.profileImage} 
-        />
-        
-        {/* แสดงชื่อหรือ TextInput ขึ้นอยู่กับสถานะการแก้ไข */}
-        <View style={styles.nameContainer}>
-          {isEditing ? (
-            <TextInput
-              style={styles.profileName}
-              value={name}
-              onChangeText={handleChangeName}
-            />
-          ) : (
-            <Text style={styles.profileName}>{name}</Text>
-          )}
-          
-          {/* ลดพื้นที่ในการกดไอคอน */}
-          <TouchableOpacity onPress={handleEditName} style={styles.editButton}>
-            <Image 
-              source={require("../assets/images/Pen3.png")} // ใช้ไอคอนที่มีรูปดินสอ
-              style={styles.editIcon} 
-            />
-          </TouchableOpacity>
+        <View style={styles.myProfileContainer}>
+          <Text style={styles.myProfileText}>My Profile</Text>
         </View>
 
-        <Text style={styles.profileEmail}>ebolacoronana@gmail.com</Text>
-      </View>
+        <TouchableOpacity 
+          style={styles.topRightButton} 
+          onPress={() => navigation.navigate("Overview")}
+        >
+          <Image 
+            source={require("../assets/images/home.png")} 
+            style={styles.topRightIcon} 
+          />
+        </TouchableOpacity>
 
-      {/* ปุ่ม Sign Out (ไปยังหน้า Login) */}
-      <TouchableOpacity 
-        style={styles.signOutButton}
-        onPress={() => navigation.navigate("Login")}
-      >
-        <Text style={styles.buttonText}>Log Out</Text>
-      </TouchableOpacity>
-    </ImageBackground>
+        <View style={styles.profileContainer}>
+          <Image 
+            source={require("../assets/images/profile11.png")} 
+            style={styles.profileImage} 
+          />
+
+          <View style={styles.nameContainer}>
+            {isEditing ? (
+              <TextInput
+                style={styles.profileName}
+                value={name}
+                onChangeText={setName}
+                autoFocus
+              />
+            ) : (
+              <Text style={styles.profileName}>{name}</Text>
+            )}
+
+            <TouchableOpacity onPress={() => setIsEditing(!isEditing)} style={styles.editButton}>
+              <Image 
+                source={require("../assets/images/Pen3.png")}
+                style={styles.editIcon} 
+              />
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.profileEmail}>ebolacoronana@gmail.com</Text>
+        </View>
+
+        <TouchableOpacity 
+          style={styles.LogOutButton}
+          onPress={() => navigation.navigate("Login")}
+        >
+          <Text style={styles.buttonText}>Log Out</Text>
+        </TouchableOpacity>
+
+        {/* ปุ่มลบบัญชี */}
+        <TouchableOpacity 
+          style={styles.deleteButton} 
+          onPress={deleteAccount}
+        >
+          <Text style={styles.deleteText}>Delete Account</Text>
+        </TouchableOpacity>
+      </ImageBackground>
+    </TouchableWithoutFeedback>
   );
 };
 
@@ -156,21 +191,21 @@ const styles = StyleSheet.create({
     color: "#6D3B76",
   },
   editButton: {
-    padding: -4, // ลดขนาดพื้นที่ในการกด
+    padding: -4,
   },
   editIcon: {
-    left:25,
+    left: 25,
     width: 22,
     height: 20,
     resizeMode: "contain",
   },
   profileEmail: {
     fontSize: 14,
-    left:9 ,
+    left: 9,
     color: "#666",
     marginTop: 6,
   },
-  signOutButton: {
+  LogOutButton: {
     position: "absolute",
     bottom: 30,
     right: 25,
@@ -185,6 +220,24 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#6a367a",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  deleteButton: {
+    position: "absolute",
+    bottom: 80,
+    right: 25,
+    backgroundColor: "#e74c3c",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  deleteText: {
+    color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
   },

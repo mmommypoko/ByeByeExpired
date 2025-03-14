@@ -8,19 +8,33 @@ const RegisterScreen = ({ navigation }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleRegister = () => {
+    // ตรวจสอบข้อมูลที่กรอก
+    if (!fullName || !email || !password || !confirmPassword) {
+      Alert.alert("Error", "Please fill in all fields");
+      return;
+    }
+  
+    // ตรวจสอบรูปแบบอีเมลให้มีเครื่องหมาย "@"
+    if (!email.includes("@")) {
+      Alert.alert("Error", "Please enter a valid email address");
+      return;
+    }
+  
+    // ตรวจสอบว่า password และ confirmPassword ตรงกันหรือไม่
     if (password !== confirmPassword) {
       Alert.alert("Error", "Passwords do not match");
       return;
     }
   
     const userData = {
-      fullName: fullName,  // ส่ง fullName ไปด้วย
+      fullName: fullName,
       email: email,
       password: password,
-      confirmPassword: confirmPassword,  // ส่ง confirmPassword ด้วย
+      confirmPassword: confirmPassword,
     };
   
-    fetch('https://bug-free-telegram-x5597wr5w69gc9qr9-5001.app.github.dev/register', {
+    // เชื่อมกับ Backend เพื่อตรวจสอบว่าอีเมลซ้ำหรือไม่
+    fetch('https://bug-free-telegram-x5597wr5w69gc9qr9-5001.app.github.dev/register', {  // แก้ไข URL ที่ถูกต้องของคุณที่นี้
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -31,7 +45,29 @@ const RegisterScreen = ({ navigation }) => {
     .then((data) => {
       if (data.message === "User registered successfully") {
         Alert.alert("Success", "Registration successful!");
-        navigation.navigate("Login");
+        navigation.navigate("Login");  // ย้ายไปที่หน้าล็อกอิน
+      } else if (data.message === "Email already exists") {
+        Alert.alert(
+          "Error",
+          "Email is already registered!",
+          [
+            {
+              text: "Try Again",
+              onPress: () => {
+                // ล้างข้อมูลที่กรอกทั้งหมด
+                setFullName('');
+                setEmail('');
+                setPassword('');
+                setConfirmPassword('');
+              },
+            },
+            {
+              text: "Login",
+              onPress: () => navigation.navigate("Login"),
+            },
+          ],
+          { cancelable: false }
+        );
       } else {
         Alert.alert("Error", data.message || "An error occurred");
       }

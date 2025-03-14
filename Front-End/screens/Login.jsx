@@ -2,48 +2,56 @@ import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground, Alert } from "react-native";
 
 const LoginScreen = ({ navigation }) => {
-  // ใช้ useState เพื่อจัดการค่าของอีเมลและรหัสผ่าน
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  // ฟังก์ชันเพื่อจัดการการเข้าสู่ระบบ
-  const handleLogin = async () => {
-    // ตรวจสอบว่าอีเมลและรหัสผ่านถูกกรอกหรือยัง
+  const handleLogin = () => {
     if (!email || !password) {
-      Alert.alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+      Alert.alert("Error", "Please fill in both fields");
       return;
     }
 
-    // สร้างข้อมูลสำหรับส่งไปที่ API
+    // เชื่อมต่อกับ Backend เพื่อตรวจสอบข้อมูล
     const loginData = {
       email: email,
       password: password,
     };
 
-    try {
-      // ส่งข้อมูลเข้าสู่ระบบไปยัง API
-      const response = await fetch("https://bug-free-telegram-x5597wr5w69gc9qr9-5001.app.github.dev/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(loginData),
-      });
-
-      const data = await response.json();
-
-      if (response.status === 200) {
-        // หากเข้าสู่ระบบสำเร็จ นำทางไปที่หน้า Overview
-        navigation.navigate("Overview", { items: data.items });
+    fetch('https://bug-free-telegram-x5597wr5w69gc9qr9-5001.app.github.dev/login', {  // เปลี่ยน URL ให้ถูกต้อง
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(loginData),
+    })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.message === "Login successful") {
+        // ถ้าล็อกอินสำเร็จ นำผู้ใช้ไปที่หน้า Overview
+        Alert.alert("Success", "Login successful!");
+        navigation.navigate("Overview");
       } else {
-        // หากเกิดข้อผิดพลาดแสดงข้อความ
-        const errorMessage = data.message || "เกิดข้อผิดพลาดในการเข้าสู่ระบบ";
-        Alert.alert(errorMessage);
+        // ถ้าล็อกอินไม่สำเร็จ ให้แสดงข้อความผิดพลาดและเพิ่มปุ่ม "Create an account"
+        Alert.alert(
+          "Error",
+          "Invalid email or password. Please try again.",
+          [
+            {
+              text: "Try Again",
+              onPress: () => console.log("Try Again Pressed")
+            },
+            {
+              text: "Create an account",
+              onPress: () => navigation.navigate("Register")
+            }
+          ]
+        );
       }
-    } catch (error) {
+    })
+    .catch((error) => {
       console.error("Error during login:", error);
-      Alert.alert("เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์");
-    }
+      Alert.alert("Error", "An error occurred. Please try again later.");
+    });
   };
 
   return (
@@ -59,24 +67,24 @@ const LoginScreen = ({ navigation }) => {
         <Text style={styles.label}>Email address</Text>
         <TextInput
           style={styles.input}
-          keyboardType="email-address"
           value={email}
-          onChangeText={setEmail} // อัปเดตค่าของอีเมลเมื่อผู้ใช้พิมพ์
+          onChangeText={setEmail}
+          keyboardType="email-address"
         />
         <Text style={styles.label}>Password</Text>
         <TextInput
           style={styles.input}
-          secureTextEntry
           value={password}
-          onChangeText={setPassword} // อัปเดตค่าของรหัสผ่านเมื่อผู้ใช้พิมพ์
+          onChangeText={setPassword}
+          secureTextEntry
         />
         <TouchableOpacity style={styles.button} onPress={handleLogin}>
           <Text style={styles.buttonText}>Log In</Text>
         </TouchableOpacity>
         <Text style={styles.footerText}>
           Don’t have an account yet?{" "}
-          <Text
-            style={styles.signUpText}
+          <Text 
+            style={styles.signUpText} 
             onPress={() => navigation.navigate("Register")}
           >
             Create an account

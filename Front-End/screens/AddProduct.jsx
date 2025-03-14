@@ -7,7 +7,10 @@ import { View, Text, TouchableOpacity, TextInput, StyleSheet, Alert, Image ,
 import DropDownPicker from "react-native-dropdown-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
+import FormData from "form-data";  // ใช้ FormData ส่งไฟล์ไปเซิร์ฟเวอร์
+
 import DateTimePicker from "@react-native-community/datetimepicker";
 
 const AddProductScreen = ({ navigation }) => {
@@ -21,16 +24,43 @@ const AddProductScreen = ({ navigation }) => {
   const [quantity, setQuantity] = useState("");
 
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
+    let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
       quality: 1,
     });
-
-    if (!result.cancelled) {
-      setImageUri(result.uri);
+  
+    if (!result.canceled) {
+      setImageUri(result.assets[0].uri);  // แสดงตัวอย่างรูปที่เลือก
+      uploadImage(result.assets[0].uri);  // อัปโหลดรูป
     }
   };
 
+  const uploadImage = async (uri) => {
+    let formData = new FormData();
+    let filename = uri.split("/").pop();  // ดึงชื่อไฟล์
+    let match = /\.(\w+)$/.exec(filename);
+    let type = match ? `image/${match[1]}` : `image`;
+  
+    formData.append("file", {
+      uri,
+      name: filename,
+      type,
+    });
+  
+    try {
+      let response = await axios.post("https://sturdy-space-goggles-pj7p6j47w79q294p9-5001.app.github.dev/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+  
+      if (response.data.file_url) {
+        setImageUri(response.data.file_url); // ตั้งค่าลิงก์รูปที่อัปโหลดแล้ว
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+    }
+  };
+  
   const onChangeStorageDate = (event, selectedDate) => {
     const currentDate = selectedDate || storageDate;
     setStorageDate(currentDate);
@@ -341,6 +371,14 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
   },
+
+  imagePreview: {
+    width: "100%",  
+    height: "100%",
+    borderRadius: 10, 
+    resizeMode: "cover",
+  },
+  
 });
 
 export default AddProductScreen;
