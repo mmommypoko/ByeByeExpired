@@ -5,7 +5,7 @@ const LoadScreen = ({ navigation }) => {
   useEffect(() => {
     setTimeout(() => {
       navigation.replace("Login"); // เปลี่ยนเป็นหน้า Login หลังจาก 2 วิ
-    }, 4000);
+    }, 2000);
   }, [navigation]);
 
   return (

@@ -4,6 +4,8 @@ import { Card } from "react-native-paper";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import AddProductScreen from "./AddProduct"; // นำเข้าหน้า Add Product
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from "axios";
 
 const nearlyExpiredData = [
   { id: "1", name: "เอโร่ ไข่ไก่ เบอร์ 3", image: require("../assets/images/egg.png") },
@@ -38,6 +40,7 @@ export default function App() {
   const navigation = useNavigation();
   const [nearlyExpired, setNearlyExpired] = useState([]);  // กำหนด useState ที่นี่
   const [expired, setExpired] = useState([]);  // กำหนด useState ที่นี่
+  const [userId, setUserId] = useState(null);
 
 
   useEffect(() => {
@@ -47,6 +50,17 @@ export default function App() {
     setNearlyExpired(nearlyExpiredData.slice(0, 5));
     setExpired(expiredData.slice(0, 5));
 
+  }, []);
+
+  useEffect(() => {
+    const fetchUserId = async () => {
+      const storedUserId = await AsyncStorage.getItem('user_id');
+      if (storedUserId) {
+        setUserId(storedUserId);
+      }
+    };
+  
+    fetchUserId();
   }, []);
 
   return (
@@ -134,7 +148,7 @@ export default function App() {
               {nearlyExpired.map((item) => (
                 <TouchableOpacity
                   key={item.id}
-                  onPress={() => navigation.navigate("NearlyExpired", { productId: item.id })} // เพิ่มการนำทางที่นี่
+                  onPress={() => navigation.navigate("NearlyExpired", { productId: item.id, userId })} // เพิ่มการนำทางที่นี่
                 >
                   <View key={item.id} style={{ backgroundColor: "#FFEBEB", borderRadius: 10, padding: 15, marginRight: 10, width: 90, height: 90, justifyContent: "center", alignItems: "center" }}>
                     <Image source={item.image} style={{ width: 50, height: 50, marginTop: 10 }} />

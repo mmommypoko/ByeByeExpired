@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   View, Text, Image, TouchableOpacity, 
   StyleSheet, ImageBackground, Dimensions, TextInput, 
@@ -6,47 +6,109 @@ import {
 } from "react-native";
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get("window");
 
-const ProfileScreen = ({ route }) => {
-  const [name, setName] = useState("Ebola Coronana");
-  const [isEditing, setIsEditing] = useState(false);
+const ProfileScreen = () => {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [isEditing, setIsEditing] = useState(false); 
+  const [userId, setUserId] = useState(null); // เพิ่ม state สำหรับ userId
   const navigation = useNavigation();
 
-  // ฟังก์ชันสำหรับลบบัญชี
-  const deleteAccount = async () => {
-    console.log(route.params);
-    const userId = route?.params?.userId;
+  useEffect(() => {
+    const fetchUserId = async () => {
+      try {
+        // ดึง user_id จาก AsyncStorage
+        const storedUserId = await AsyncStorage.getItem('user_id');
+        if (storedUserId) {
+          setUserId(storedUserId);
+          fetchUserData(storedUserId);
+        } else {
+          console.log("No user ID found in AsyncStorage");
+        }
+      } catch (error) {
+        console.error("Error fetching userId from AsyncStorage:", error);
+      }
+    };
+
+    fetchUserId();
+  }, []);
+
+  const fetchUserData = (userId) => {
+    if (userId) {
+      console.log("Sending userId:", userId);
+      axios.get(`https://bug-free-telegram-x5597wr5w69gc9qr9-5001.app.github.dev/get_user/${userId}`)
+        .then(response => {
+          console.log("API Response:", response.data);
+          setName(response.data.name);
+          setEmail(response.data.email);
+        })
+        .catch(error => {
+          console.error("API Error:", error.response ? error.response.data : error.message);
+          if (error.response && error.response.data.message === "User not found") {
+            Alert.alert("ไม่พบผู้ใช้", "ไม่มีข้อมูลผู้ใช้ที่ตรงกับ userId นี้");
+          } else {
+            Alert.alert("เกิดข้อผิดพลาด", "ไม่สามารถดึงข้อมูลผู้ใช้ได้");
+          }
+        });
+    }
+  };
+
+  // ฟังก์ชันบันทึกชื่อที่แก้ไข
+  const saveName = async () => {
     if (!userId) {
       Alert.alert("ข้อมูลไม่ครบถ้วน", "ไม่พบ userId");
       return;
     }
+    try {
+      await axios.put('https://bug-free-telegram-x5597wr5w69gc9qr9-5001.app.github.dev/update_name', {
+        user_id: userId,
+        name: name,
+      });
+      Alert.alert("สำเร็จ", "ชื่อของคุณถูกอัปเดตแล้ว");
+      setIsEditing(false);
+    } catch (error) {
+      console.error(error);
+      Alert.alert("เกิดข้อผิดพลาด", "ไม่สามารถอัปเดตชื่อได้");
+    }
+  };
 
-  // แสดงการแจ้งเตือนก่อนทำการลบบัญชี
-  Alert.alert(
-    "ลบบัญชี",
-    "คุณแน่ใจหรือว่าต้องการลบบัญชีนี้? การลบไม่สามารถกู้คืนได้.",
-    [
-      { text: "ยกเลิก" },
-      { text: "ลบบัญชี", onPress: async () => {
-        try {
-          // ส่ง request ลบบัญชี
-          const response = await axios.delete('https://bug-free-telegram-x5597wr5w69gc9qr9-5001.app.github.dev/delete_account', {
-            data: { user_id: userId },
-          });
-          if (response.status === 200) {
-            Alert.alert('บัญชีของคุณถูกลบเรียบร้อยแล้ว');
-            navigation.navigate("Login"); // กลับไปที่หน้าล็อกอินหลังลบบัญชี
+  // ฟังก์ชันสำหรับลบบัญชี
+  const deleteAccount = async () => {
+    if (!userId) {
+      Alert.alert("ข้อมูลไม่ครบถ้วน", "ไม่พบ userId");
+      return;
+    }
+  
+    // แสดงการแจ้งเตือนก่อนทำการลบบัญชี
+    Alert.alert(
+      "ลบบัญชี",
+      "คุณแน่ใจหรือว่าต้องการลบบัญชีนี้? การลบไม่สามารถกู้คืนได้.",
+      [
+        { text: "ยกเลิก" },
+        { 
+          text: "ลบบัญชี", 
+          onPress: async () => {
+            try {
+              // ส่ง request ลบบัญชี
+              const response = await axios.delete('https://bug-free-telegram-x5597wr5w69gc9qr9-5001.app.github.dev/delete_account', {
+                data: { user_id: userId },
+              });
+              if (response.status === 200) {
+                Alert.alert('บัญชีของคุณถูกลบเรียบร้อยแล้ว');
+                navigation.navigate("Login"); // กลับไปที่หน้าล็อกอินหลังลบบัญชี
+              }
+            } catch (error) {
+              console.error(error);
+              Alert.alert('เกิดข้อผิดพลาดในการลบบัญชี');
+            }
           }
-        } catch (error) {
-          console.error(error);
-          Alert.alert('เกิดข้อผิดพลาดในการลบบัญชี');
-        }
-      }},
-    ]
-  );
-};
+        },
+      ]
+    );
+  };
 
   const handleOutsidePress = () => {
     Keyboard.dismiss();
@@ -90,6 +152,7 @@ const ProfileScreen = ({ route }) => {
                 value={name}
                 onChangeText={setName}
                 autoFocus
+                onSubmitEditing={saveName}
               />
             ) : (
               <Text style={styles.profileName}>{name}</Text>
@@ -103,7 +166,7 @@ const ProfileScreen = ({ route }) => {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.profileEmail}>ebolacoronana@gmail.com</Text>
+          <Text style={styles.profileEmail}>{email}</Text>
         </View>
 
         <TouchableOpacity 

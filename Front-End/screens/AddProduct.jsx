@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState , useEffect} from "react";
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, Alert, Image , 
   TouchableWithoutFeedback,
   Keyboard,
@@ -10,8 +10,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
 import FormData from "form-data";  // ใช้ FormData ส่งไฟล์ไปเซิร์ฟเวอร์
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { getUserID } from '../utils/storage';
 
 const AddProductScreen = ({ navigation }) => {
   const [selectedStorage, setSelectedStorage] = useState(null);
@@ -22,7 +23,25 @@ const AddProductScreen = ({ navigation }) => {
   const [userName, setUserName] = useState("");
   const [open, setOpen] = useState(false);
   const [quantity, setQuantity] = useState("");
+  const [userId, setUserId] = useState(null);
 
+  useEffect(() => {
+    const checkUserID = async () => {
+      try {
+        const storedUserId = await getUserID();
+        if (storedUserId) {
+          setUserId(storedUserId);  // กำหนดค่า user_id ลงใน state
+        } else {
+          Alert.alert("User not logged in", "Please log in to continue");
+        }
+      } catch (error) {
+        console.error("Error fetching user_id:", error);
+      }
+    };
+    
+    checkUserID();
+  }, []);
+  
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -30,12 +49,15 @@ const AddProductScreen = ({ navigation }) => {
       quality: 1,
     });
   
-    if (!result.canceled) {
+    if (!result.canceled && result.assets[0].uri) {
       setImageUri(result.assets[0].uri);  // แสดงตัวอย่างรูปที่เลือก
+      console.log("Image URI: ", result.assets[0].uri);  // เพิ่มการตรวจสอบ URL ของภาพ
       uploadImage(result.assets[0].uri);  // อัปโหลดรูป
+    } else {
+      Alert.alert("กรุณาเลือกภาพ");
     }
   };
-
+  
   const uploadImage = async (uri) => {
     let formData = new FormData();
     let filename = uri.split("/").pop();  // ดึงชื่อไฟล์
@@ -49,17 +71,20 @@ const AddProductScreen = ({ navigation }) => {
     });
   
     try {
-      let response = await axios.post("https://sturdy-space-goggles-pj7p6j47w79q294p9-5001.app.github.dev/upload", formData, {
+      let response = await axios.post("https://bug-free-telegram-x5597wr5w69gc9qr9-5001.app.github.dev/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
   
       if (response.data.file_url) {
+        console.log("Image uploaded successfully:", response.data.file_url);  // ดู URL ที่ได้รับ
         setImageUri(response.data.file_url); // ตั้งค่าลิงก์รูปที่อัปโหลดแล้ว
+      } else {
+        console.log("No file_url received from server");
       }
     } catch (error) {
       console.error("Upload error:", error);
     }
-  };
+};
   
   const onChangeStorageDate = (event, selectedDate) => {
     const currentDate = selectedDate || storageDate;
@@ -71,9 +96,23 @@ const AddProductScreen = ({ navigation }) => {
     setExpirationDate(currentDate);
   };
 
-  const saveProduct = () => {
-    if (!selectedStorage || !userName || !note || !quantity) {
+  const saveProduct = async () => {
+    // ตรวจสอบว่า user_id ถูกตั้งค่าแล้วหรือไม่
+    if (!userId) {
+      Alert.alert("ไม่พบข้อมูลผู้ใช้");
+      return;
+    }
+  
+    console.log("📌 _id ก่อนส่งไป API:", userId); // ✅ ตรวจสอบก่อนส่ง
+    
+    // ตรวจสอบว่าได้กรอกข้อมูลครบถ้วนหรือไม่
+    if (!selectedStorage || !userName || !quantity || !imageUri) {
       Alert.alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+      return;
+    }
+  
+    if (!imageUri) {
+      Alert.alert("กรุณาอัปโหลดรูปภาพ");
       return;
     }
   
@@ -82,14 +121,46 @@ const AddProductScreen = ({ navigation }) => {
       return;
     }
   
-    Alert.alert("ข้อมูลผลิตภัณฑ์ถูกบันทึกแล้ว", "", [
-      {
-        text: "OK",
-        onPress: () => navigation.goBack(),
-      },
-    ]);
-  };
+    // ข้อมูลผลิตภัณฑ์ที่กรอกมา
+    const productData = {
+      name: userName,
+      storage: selectedStorage,
+      storage_date: storageDate.toISOString().split('T')[0],
+      expiration_date: expirationDate.toISOString().split('T')[0],
+      quantity: parseInt(quantity),
+      note: note,
+      user_id: userId,  // ใช้ _id ที่เก็บใน state
+      photo: imageUri,
+    };
   
+    try {
+      const response = await axios.post(
+        "https://bug-free-telegram-x5597wr5w69gc9qr9-5001.app.github.dev/add_item",
+        productData,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+  
+      console.log("Response:", response.data); // เพิ่ม Log ตรวจสอบ
+  
+      if (response.status === 201) {
+        Alert.alert("ข้อมูลผลิตภัณฑ์ถูกบันทึกแล้ว", "", [
+          {
+            text: "OK",
+            onPress: () => navigation.goBack(),
+          },
+        ]);
+      } else {
+        Alert.alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+      }
+    } catch (error) {
+      console.error("Error saving product:", error);
+      Alert.alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+    }
+  };
 
   const [showStorageDatePicker, setShowStorageDatePicker] = useState(false);
   const [showExpirationDatePicker, setShowExpirationDatePicker] = useState(false);
@@ -133,9 +204,9 @@ const AddProductScreen = ({ navigation }) => {
           <View style={styles.imagePlaceholder}>
             {imageUri ? (
               <Image source={{ uri: imageUri }} style={styles.imagePreview} />
-            ) : (
-              <Text style={styles.imagePlaceholderText}>Tap to add image</Text>
-            )}
+          ) : (
+            <Text style={styles.imagePlaceholderText}>Tap to add image</Text>
+           )}
           </View>
         </TouchableOpacity>
         
@@ -210,6 +281,7 @@ const AddProductScreen = ({ navigation }) => {
               value={storageDate}
               mode="date"
               display="spinner"
+              textColor="black"
               onChange={onChangeStorageDate}
               style={styles.dateTimePicker}
             />
@@ -229,6 +301,7 @@ const AddProductScreen = ({ navigation }) => {
               value={expirationDate}
               mode="date"
               display="spinner"
+              textColor="black"
               onChange={onChangeExpirationDate}
               style={[styles.dateTimePicker, { height: 150 }]}
             />

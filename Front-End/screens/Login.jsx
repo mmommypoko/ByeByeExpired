@@ -1,57 +1,71 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground, Alert } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { setUserID } from '../utils/storage';  // ตรวจสอบเส้นทางให้ถูกต้อง
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Please fill in both fields");
       return;
     }
-
-    // เชื่อมต่อกับ Backend เพื่อตรวจสอบข้อมูล
-    const loginData = {
-      email: email,
-      password: password,
-    };
-
-    fetch('https://bug-free-telegram-x5597wr5w69gc9qr9-5001.app.github.dev/login', {  // เปลี่ยน URL ให้ถูกต้อง
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(loginData),
-    })
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.message === "Login successful") {
-        // ถ้าล็อกอินสำเร็จ นำผู้ใช้ไปที่หน้า Overview
-        Alert.alert("Success", "Login successful!");
-        navigation.navigate("Overview");
+  
+    const loginData = { email, password };
+  
+    try {
+      const response = await fetch('https://bug-free-telegram-x5597wr5w69gc9qr9-5001.app.github.dev/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(loginData),
+      });
+  
+      // เช็คว่า response.ok เป็น true หรือไม่
+      if (!response.ok) {
+        const errorMessage = await response.text();
+        console.log("Error Response:", errorMessage);
+        Alert.alert("Error", `Login failed: ${errorMessage}`);
+        return;
+      }
+  
+      const data = await response.json();
+  
+      // Debugging Logs
+      console.log("Response data:", data);
+      console.log("User Object:", data.user); // เช็ค user object
+  
+      // ตรวจสอบว่า login สำเร็จ
+      if (data.message === "Login successful" && data.user) {
+        const userId = data.user._id; // ใช้ _id แทน id
+  
+        if (userId) {
+          // บันทึก user_id ลงใน AsyncStorage
+          await setUserID(userId)
+          console.log("Logged in _id:", userId);
+          
+          // แจ้งเตือนและนำทางไปยังหน้าต่อไป
+          Alert.alert("Success", `Login successful! Your User ID: ${userId}`);
+          navigation.navigate("Overview");
+        } else {
+          console.log("No _id received from the server.");
+          Alert.alert("Error", "No user ID received. Please try again.");
+        }
       } else {
-        // ถ้าล็อกอินไม่สำเร็จ ให้แสดงข้อความผิดพลาดและเพิ่มปุ่ม "Create an account"
         Alert.alert(
           "Error",
           "Invalid email or password. Please try again.",
           [
-            {
-              text: "Try Again",
-              onPress: () => console.log("Try Again Pressed")
-            },
-            {
-              text: "Create an account",
-              onPress: () => navigation.navigate("Register")
-            }
+            { text: "Try Again", onPress: () => console.log("Try Again Pressed") },
+            { text: "Create an account", onPress: () => navigation.navigate("Register") }
           ]
         );
       }
-    })
-    .catch((error) => {
+    } catch (error) {
       console.error("Error during login:", error);
       Alert.alert("Error", "An error occurred. Please try again later.");
-    });
+    }
   };
 
   return (
