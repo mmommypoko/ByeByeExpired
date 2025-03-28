@@ -1,77 +1,166 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, TextInput, StyleSheet, Alert, Image , 
-  TouchableWithoutFeedback,
-  Keyboard,
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  TextInput,
+  Alert,
   KeyboardAvoidingView,
-  Platform,} from "react-native";
-import DropDownPicker from "react-native-dropdown-picker";
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import * as ImagePicker from "expo-image-picker";
-import DateTimePicker from "@react-native-community/datetimepicker";
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard, 
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient"; // ใช้สร้างพื้นหลังแบบไล่สี
+import axios from "axios"; // ใช้สำหรับส่ง HTTP Request
+import AsyncStorage from "@react-native-async-storage/async-storage"; // ใช้สำหรับเก็บข้อมูลในอุปกรณ์
+import DropDownPicker from "react-native-dropdown-picker"; // ใช้สำหรับสร้าง Dropdown Menu
+import DateTimePicker from "@react-native-community/datetimepicker"; // ใช้สำหรับเลือกวันที่
+import { Ionicons } from "@expo/vector-icons"; // ใช้สำหรับไอคอน
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view"; // ใช้สำหรับเลื่อนหน้าจอเมื่อแป้นพิมพ์แสดงขึ้น
 
-const AddProductScreen = ({ navigation }) => {
-  const [selectedStorage, setSelectedStorage] = useState(null);
-  const [storageDate, setStorageDate] = useState(new Date());
-  const [expirationDate, setExpirationDate] = useState(new Date());
-  const [note, setNote] = useState("");
-  const [imageUri, setImageUri] = useState(null);
-  const [userName, setUserName] = useState("");
-  const [open, setOpen] = useState(false);
-  const [quantity, setQuantity] = useState("");
+const ShowDetailofProduct = ({ route, navigation }) => {
+  // รับข้อมูลสินค้าจาก route.params
+  const { product } = route.params;
 
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 1,
-    });
+  // State สำหรับตรวจสอบว่าอยู่ในโหมดแก้ไขหรือไม่
+  const [isEditing, setIsEditing] = useState(false);
 
-    if (!result.cancelled) {
-      setImageUri(result.uri);
-    }
-  };
+  // State สำหรับเก็บข้อมูลสินค้าที่แก้ไข
+  const [editedProduct, setEditedProduct] = useState({ ...product });
 
-  const onChangeStorageDate = (event, selectedDate) => {
-    const currentDate = selectedDate || storageDate;
-    setStorageDate(currentDate);
-  };
-
-  const onChangeExpirationDate = (event, selectedDate) => {
-    const currentDate = selectedDate || expirationDate;
-    setExpirationDate(currentDate);
-  };
-
-  const saveProduct = () => {
-    if (!selectedStorage || !userName || !note || !quantity) {
-      Alert.alert("กรุณากรอกข้อมูลให้ครบถ้วน");
-      return;
-    }
-  
-    if (isNaN(quantity) || quantity <= 0) {
-      Alert.alert("กรุณาใส่จำนวนสินค้าให้ถูกต้อง");
-      return;
-    }
-  
-    Alert.alert("ข้อมูลผลิตภัณฑ์ถูกบันทึกแล้ว", "", [
-      {
-        text: "OK",
-        onPress: () => navigation.goBack(),
-      },
-    ]);
-  };
-  
-
-  const [showStorageDatePicker, setShowStorageDatePicker] = useState(false);
+  // State สำหรับควบคุมการแสดง Date Picker ของวันหมดอายุ
   const [showExpirationDatePicker, setShowExpirationDatePicker] = useState(false);
 
-  const showDatepicker = (type) => {
-    if (type === "storage") {
-      setShowExpirationDatePicker(false); // ปิด Expiration Date Picker หากเปิดอยู่
-      setShowStorageDatePicker(true);     // เปิด Storage Date Picker
-    } else if (type === "expiration") {
-      setShowStorageDatePicker(false);    // ปิด Storage Date Picker หากเปิดอยู่
-      setShowExpirationDatePicker(true);  // เปิด Expiration Date Picker
+  // State สำหรับเก็บวันที่หมดอายุชั่วคราว (ใช้กับ Date Picker)
+  const [tempExpirationDate, setTempExpirationDate] = useState(
+    new Date(editedProduct.expiration_date)
+  );
+
+  // ฟังก์ชันสำหรับบันทึกการแก้ไขข้อมูลสินค้า
+  const handleSave = async () => {
+    try {
+      // ดึง user_id จาก AsyncStorage
+      const userId = await AsyncStorage.getItem("user_id");
+      if (!userId) {
+        Alert.alert("Error", "User ID not found");
+        return;
+      }
+
+      // ตรวจสอบว่าข้อมูลถูกกรอกครบถ้วนหรือไม่
+      if (
+        !editedProduct.name ||
+        !editedProduct.storage ||
+        !editedProduct.storage_date ||
+        !editedProduct.expiration_date
+      ) {
+        Alert.alert("Error", "Please fill in all fields");
+        return;
+      }
+
+      // สร้างข้อมูลสินค้าที่แก้ไข
+      const updatedProduct = {
+        name: editedProduct.name,
+        storage: editedProduct.storage,
+        storage_date: new Date(editedProduct.storage_date).toISOString(),
+        expiration_date: new Date(editedProduct.expiration_date).toISOString(),
+        quantity: editedProduct.quantity,
+        note: editedProduct.note,
+        photo: editedProduct.photo,
+        user_id: parseInt(editedProduct.user_id),
+      };
+
+      // ส่งข้อมูลไปยังเซิร์ฟเวอร์เพื่ออัปเดต
+      const response = await axios.put(
+        `https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/update_item/${editedProduct._id}`,
+        updatedProduct
+      );
+
+      // ถ้าอัปเดตสำเร็จ
+      if (response.status === 200) {
+        // อัปเดต State และแสดงข้อความสำเร็จ
+        setEditedProduct((prevProduct) => ({
+          ...prevProduct,
+          ...updatedProduct,
+        }));
+        Alert.alert("Success", "Product updated successfully");
+        setIsEditing(false);
+
+        // ถ้ามีฟังก์ชัน onUpdate ใน route.params ให้เรียกใช้
+        if (route.params?.onUpdate) {
+          route.params.onUpdate(editedProduct._id, updatedProduct);
+        }
+
+        // กลับไปยังหน้าจอก่อนหน้า
+        navigation.goBack();
+      }
+    } catch (error) {
+      // จัดการข้อผิดพลาด
+      console.error("Error updating product:", error);
+      if (error.response) {
+        console.error("Server response:", error.response.data);
+      }
+      Alert.alert("Error", "Failed to update product");
     }
+  };
+
+  // ฟังก์ชันสำหรับลบสินค้า
+  const handleDelete = async () => {
+    // แสดง Alert เพื่อยืนยันการลบ
+    Alert.alert(
+      "Confirm Deletion",
+      "Are you sure you want to delete this product?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Yes",
+          onPress: async () => {
+            try {
+              // ดึง user_id จาก AsyncStorage
+              const userId = await AsyncStorage.getItem("user_id");
+              if (!userId) {
+                Alert.alert("Error", "User ID not found");
+                return;
+              }
+
+              // ส่ง Request ลบสินค้าไปยังเซิร์ฟเวอร์
+              const response = await axios.delete(
+                `https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/delete_item/${editedProduct._id}`
+              );
+
+              // ถ้าลบสำเร็จ
+              if (response.status === 200) {
+                Alert.alert("Success", "Product deleted successfully");
+                navigation.goBack();
+              }
+            } catch (error) {
+              // จัดการข้อผิดพลาด
+              console.error("Error deleting product:", error);
+              Alert.alert("Error", "Failed to delete product");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // ฟังก์ชันสำหรับจัดการการเปลี่ยนแปลงวันที่หมดอายุ
+  const onChangeExpirationDate = (event, selectedDate) => {
+    const currentDate = selectedDate || tempExpirationDate;
+    setTempExpirationDate(currentDate);
+  };
+
+  // ฟังก์ชันสำหรับยืนยันวันที่หมดอายุ
+  const confirmExpirationDate = () => {
+    setEditedProduct({
+      ...editedProduct,
+      expiration_date: tempExpirationDate.toISOString(),
+    });
+    setShowExpirationDatePicker(false);
   };
 
   return (
@@ -80,218 +169,223 @@ const AddProductScreen = ({ navigation }) => {
       style={{ flex: 1 }}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={styles.container}>
-        {/* Gradient Background */}
-        <LinearGradient
-          colors={["#B3D4FF", "#FFFFFF"]}
-          style={styles.gradientBackground}
-        />
+        <LinearGradient colors={["#a4d2ff", "#FFFFFF"]} style={styles.container}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <Text style={styles.backButton}>Back</Text>
+            </TouchableOpacity>
 
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.cancelText}>Cancel</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>Show Product</Text>
-          <TouchableOpacity onPress={saveProduct}>
-            <Text style={styles.saveText}>Save</Text>
-          </TouchableOpacity>
-        </View>
+            <Text style={styles.title}>Product Details</Text>
 
-        {/* Image Placeholder */}
-        <TouchableOpacity onPress={pickImage}>
-          <View style={styles.imagePlaceholder}>
-            {imageUri ? (
-              <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+            {isEditing ? (
+              <TouchableOpacity onPress={handleSave}>
+                <Text style={styles.saveButtonText}>Save</Text>
+              </TouchableOpacity>
             ) : (
-              <Text style={styles.imagePlaceholderText}>Tap to add image</Text>
+              <View style={{ width: 50 }} />
             )}
           </View>
-        </TouchableOpacity>
-        
-        <View style={styles.formContainer}>
-          <Text style={styles.label}>Name</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter product name"
-            value={userName}
-            onChangeText={text => setUserName(text)}
-            placeholderTextColor="#B0B0B0"
-          />
 
-          <Text style={styles.label}>Storage</Text>
-          <DropDownPicker
-            open={open}
-            setOpen={setOpen}
-            value={selectedStorage}
-            setValue={setSelectedStorage}
-            items={[
-              { label: "Fridge", value: "fridge" },
-              { label: "Freezer", value: "freezer" },
-              { label: "Dry Food", value: "dry_food" },
-            ]}
-            placeholder="Select Storage"
-            style={styles.picker}
-            dropDownContainerStyle={styles.dropDownStyle}
-          />
-
-          <Text style={styles.label}>Storage Date</Text>
-          <TouchableOpacity
-            style={styles.dateInput}
-            onPress={() => showDatepicker("storage")}
+          <KeyboardAwareScrollView
+            contentContainerStyle={styles.scrollContainer}
+            keyboardShouldPersistTaps="handled"
+            enableOnAndroid={true}
+            extraScrollHeight={100}
+            extraHeight={100}
           >
-            <Text style={{ flex: 1 }}>{storageDate.toLocaleDateString()}</Text>
-            <Ionicons name="calendar-outline" size={20} color="gray" />
-          </TouchableOpacity>
+            <View style={styles.productContainer}>
+              <Image
+                source={{ uri: editedProduct.photo }}
+                style={styles.productImage}
+              />
+              {isEditing ? (
+                <>
+                  <Text style={styles.label}>Name</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editedProduct.name}
+                    onChangeText={(text) =>
+                      setEditedProduct({ ...editedProduct, name: text })
+                    }
+                    placeholder="Product Name"
+                  />
 
-          <Text style={styles.label}>Expiration Date</Text>
-          <TouchableOpacity
-            style={styles.dateInput}
-            onPress={() => showDatepicker("expiration")}
-          >
-            <Text style={{ flex: 1 }}>{expirationDate.toLocaleDateString()}</Text>
-            <Ionicons name="calendar-outline" size={20} color="gray" />
-          </TouchableOpacity>
-          <Text style={styles.label}>Quantity</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter quantity"
-            value={quantity}
-            onChangeText={setQuantity}
-            keyboardType="numeric"
-            placeholderTextColor="#B0B0B0"
-          />
+                  <Text style={styles.label}>Storage</Text>
+                  <Text style={styles.productText}>{editedProduct.storage}</Text>
 
-          <Text style={styles.label}>Note</Text>
-          <TextInput
-            style={[styles.input, styles.noteInput]}
-            placeholder="Notes"
-            multiline
-            value={note}
-            onChangeText={setNote}
-            placeholderTextColor="#B0B0B0"
-          />
-        </View>
+                  <Text style={styles.label}>Storage Date</Text>
+                  <Text style={styles.productText}>
+                    {new Date(editedProduct.storage_date).toLocaleDateString()}
+                  </Text>
 
-        {/* DateTimePicker สำหรับ Storage Date */}
-        {showStorageDatePicker && (
-          <View style={styles.dateTimePickerStorageContainer}>
-            <DateTimePicker
-              value={storageDate}
-              mode="date"
-              display="spinner"
-              onChange={onChangeStorageDate}
-              style={styles.dateTimePicker}
-            />
-            <TouchableOpacity
-              style={styles.confirmButton}
-              onPress={() => setShowStorageDatePicker(false)}
-            >
-              <Text style={styles.confirmText}>Confirm Date</Text>
+                  <Text style={styles.label}>Expiration Date</Text>
+                  <TouchableOpacity
+                    style={styles.dateInput}
+                    onPress={() => setShowExpirationDatePicker(true)}
+                  >
+                    <Text style={{ flex: 1 }}>
+                      {new Date(editedProduct.expiration_date).toLocaleDateString()}
+                    </Text>
+                    <Ionicons name="calendar-outline" size={20} color="gray" />
+                  </TouchableOpacity>
+
+                  <Text style={styles.label}>Quantity</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editedProduct.quantity.toString()}
+                    onChangeText={(text) =>
+                      setEditedProduct({
+                        ...editedProduct,
+                        quantity: parseInt(text) || 0,
+                      })
+                    }
+                    placeholder="Quantity"
+                    keyboardType="numeric"
+                  />
+
+                  <Text style={styles.label}>Note</Text>
+                  <TextInput
+                    style={[styles.input, { height: 80 }]}
+                    value={editedProduct.note}
+                    onChangeText={(text) =>
+                      setEditedProduct({ ...editedProduct, note: text })
+                    }
+                    placeholder="Note"
+                    multiline
+                  />
+                </>
+              ) : (
+                <>
+                  <Text style={styles.label}>Name</Text>
+                  <Text style={styles.productText}>{editedProduct.name}</Text>
+
+                  <Text style={styles.label}>Storage</Text>
+                  <Text style={styles.productText}>{editedProduct.storage}</Text>
+
+                  <Text style={styles.label}>Storage Date</Text>
+                  <Text style={styles.productText}>
+                    {new Date(editedProduct.storage_date).toLocaleDateString()}
+                  </Text>
+
+                  <Text style={styles.label}>Expiration Date</Text>
+                  <Text style={styles.productText}>
+                    {new Date(editedProduct.expiration_date).toLocaleDateString()}
+                  </Text>
+
+                  <Text style={styles.label}>Quantity</Text>
+                  <Text style={styles.productText}>{editedProduct.quantity}</Text>
+
+                  <Text style={styles.label}>Note</Text>
+                  <Text style={styles.productText}>{editedProduct.note}</Text>
+                </>
+              )}
+            </View>
+          </KeyboardAwareScrollView>
+
+          <View style={styles.buttonContainer}>
+            {!isEditing && (
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => setIsEditing(true)}
+              >
+                <Text style={styles.buttonText}>Edit</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+              <Text style={styles.buttonText}>Delete</Text>
             </TouchableOpacity>
           </View>
-        )}
 
-        {/* DateTimePicker สำหรับ Expiration Date */}
-        {showExpirationDatePicker && (
-          <View style={styles.dateTimePickerExpirationContainer}>
-            <DateTimePicker
-              value={expirationDate}
-              mode="date"
-              display="spinner"
-              onChange={onChangeExpirationDate}
-              style={[styles.dateTimePicker, { height: 150 }]}
-            />
-            <TouchableOpacity
-              style={styles.confirmButton}
-              onPress={() => setShowExpirationDatePicker(false)}
-            >
-              <Text style={styles.confirmText}>Confirm Date</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
+          {showExpirationDatePicker && (
+            <View style={styles.dateTimePickerContainer}>
+              <DateTimePicker
+                value={tempExpirationDate}
+                mode="date"
+                display="spinner"
+                onChange={onChangeExpirationDate}
+                textColor="black"
+              />
+              <TouchableOpacity
+                style={styles.confirmButton}
+                onPress={confirmExpirationDate}
+              >
+                <Text style={styles.confirmText}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </LinearGradient>
       </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
+    </KeyboardAvoidingView>
   );
 };
 
-
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
+  container: {
+    flex: 1,
+    padding: 20,
   },
-
-  gradientBackground: {
-    position: "absolute",
-    width: "100%",
-    height: "100%",
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30
-  },
-
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    marginTop: 20,
-  },
-  cancelText: { fontSize: 16, color: "red" },
-  saveText: { fontSize: 16, color: "blue" },
-  title: { fontSize: 20, fontWeight: "bold", color: "#2D3B6B" },
-
-  imagePlaceholder: {
-    height: 120,
-    width: 120,
-    backgroundColor: "#F0F0F0",
-    borderRadius: 10,
-    alignSelf: "center",
-    marginTop: 10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  imagePlaceholderText: { color: "#ccc", textAlign: "center" },
-
-  formContainer: {
-    backgroundColor: "white",
-    marginHorizontal: 20,
-    padding: 15,
-    borderRadius: 20,
-    marginTop: 25,
-    marginBottom: 25,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-
-  label: { fontSize: 14, fontWeight: "500", marginBottom: 5, color: "black" },
-  input: {
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: "#F3F3F3",
-    paddingHorizontal: 10,
-    marginBottom: 15,
-    color: "black",
-  },
-
-  picker: {
-    height: 40,
-    width: "100%",
-    justifyContent: "center",
     marginBottom: 20,
   },
-
-  dropDownStyle: {
-    backgroundColor: "#f3f3f3",
-    borderRadius: 10,
+  backButton: {
+    fontSize: 16,
+    color: "#033495",
+    fontWeight: "bold",
   },
-
+  saveButtonText: {
+    fontSize: 16,
+    color: "blue",
+    fontWeight: "bold",
+  },
+  title: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#033495",
+  },
+  scrollContainer: {
+    flexGrow: 1,
+  },
+  productContainer: {
+    alignItems: "flex-start",
+    backgroundColor: "#f8f8f8",
+    padding: 20,
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  productImage: {
+    width: "100%",
+    height: 200,
+    resizeMode: "contain",
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#033495",
+    marginTop: 10,
+  },
+  productText: {
+    fontSize: 16,
+    color: "#333",
+    marginBottom: 10,
+  },
+  input: {
+    width: "100%",
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 5,
+    marginBottom: 10,
+  },
   dateInput: {
     flexDirection: "row",
     alignItems: "center",
@@ -300,47 +394,57 @@ const styles = StyleSheet.create({
     backgroundColor: "#F3F3F3",
     paddingHorizontal: 10,
     marginBottom: 20,
+    color: "black",
   },
-
-  noteInput: { height: 80, textAlignVertical: "top" },
-
-  dateTimePicker: {
-    height: 100
+  buttonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginTop: 20,
   },
-
-  dateTimePickerStorageContainer: {
+  editButton: {
+    backgroundColor: "#033495",
+    padding: 15,
+    borderRadius: 10,
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  deleteButton: {
+    backgroundColor: "#dc3545",
+    padding: 15,
+    borderRadius: 10,
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  buttonText: {
+    color: "#fff",
+    textAlign: "center",
+    fontWeight: "bold",
+  },
+  dateTimePickerContainer: {
     position: "absolute",
-    top: "60%",
-    left: "5%",
+    bottom: 20,
+    left: 20,
+    right: 20,
     backgroundColor: "white",
-    borderRadius: 20,
-    zIndex: 10,
+    borderRadius: 10,
     padding: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-
-  dateTimePickerExpirationContainer: {
-    position: "absolute",
-    top: "60%",
-    left: "5%",
-    backgroundColor: "white",
-    borderRadius: 20,
-    zIndex: 10,
-    padding: 10,
-  },
-
   confirmButton: {
     backgroundColor: "#2196F3",
-    padding: 15,
+    padding: 10,
+    borderRadius: 5,
     alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-    borderRadius: 10,
+    marginTop: 10,
   },
-
   confirmText: {
     color: "white",
     fontSize: 16,
   },
 });
 
-export default AddProductScreen;
+export default ShowDetailofProduct;

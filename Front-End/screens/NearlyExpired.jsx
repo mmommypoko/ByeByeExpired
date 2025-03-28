@@ -1,54 +1,129 @@
-import React from "react";
-import { View, Text, TouchableOpacity, FlatList, StyleSheet, Image } from "react-native";
+import React, { useState, useEffect } from "react";
+import {
+  View, Text, TouchableOpacity, FlatList, StyleSheet, Image,
+  ActivityIndicator, Alert
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import axios from "axios";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const productData = [
-  { id: "1", name: "เอโร่ ไข่ไก่ เบอร์ 3", quantity: "1 piece", expDate: "4 Mar 2025", image: require("../assets/images/egg.png") },
-  { id: "2", name: "ลูกชิ้นปลากลม", quantity: "1 piece", expDate: "2 Jan 2025", image: require("../assets/images/egg.png") },
-  { id: "3", name: "น้ำมะนาวคั้นสด", quantity: "1 piece", expDate: "9 Jan 2025", image: require("../assets/images/egg.png") },
-  { id: "4", name: "ไก่หมักกล้วยแช่แข็ง", quantity: "2 piece", expDate: "14 Jan 2025", image: require("../assets/images/egg.png") },
-  { id: "5", name: "เลือดไก่", quantity: "1 piece", expDate: "2 Feb 2025", image: require("../assets/images/egg.png") },
-  { id: "6", name: "เครื่องในไก่", quantity: "1 piece", expDate: "10 Feb 2025", image: require("../assets/images/egg.png") },
-];
-
+// NearlyExpiredScreen คอมโพเนนต์สำหรับแสดงสินค้าที่ใกล้หมดอายุ
 const NearlyExpiredScreen = ({ navigation }) => {
+  // State สำหรับเก็บรายการสินค้าที่ใกล้หมดอายุ
+  const [products, setProducts] = useState([]);
+  // State สำหรับจัดการสถานะการโหลดข้อมูล
+  const [loading, setLoading] = useState(true);
+  // State สำหรับเก็บ ID ของผู้ใช้
+  const [userId, setUserId] = useState(null);
+
+  // useEffect สำหรับดึง ID ผู้ใช้จาก AsyncStorage และดึงข้อมูลสินค้าที่ใกล้หมดอายุ
+  useEffect(() => {
+    const fetchUserId = async () => {
+      try {
+        // ดึง ID ผู้ใช้จาก AsyncStorage
+        const storedUserId = await AsyncStorage.getItem('user_id');
+        if (storedUserId) {
+          setUserId(storedUserId);
+          // ดึงข้อมูลสินค้าที่ใกล้หมดอายุโดยใช้ ID ผู้ใช้
+          fetchNearlyExpiredProducts(storedUserId);
+        } else {
+          console.log("ไม่พบ ID ผู้ใช้ใน AsyncStorage");
+        }
+      } catch (error) {
+        console.error("เกิดข้อผิดพลาดในการดึง ID ผู้ใช้จาก AsyncStorage:", error);
+      }
+    };
+
+    fetchUserId();
+  }, []);
+
+  // ฟังก์ชันสำหรับดึงข้อมูลสินค้าที่ใกล้หมดอายุจากเซิร์ฟเวอร์
+  const fetchNearlyExpiredProducts = async (userId) => {
+    try {
+      const response = await axios.get(
+        `https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/get_nearly_expired_items/${userId}`
+      );
+      // อัปเดตรายการสินค้าที่ใกล้หมดอายุใน state
+      setProducts(response.data);
+    } catch (error) {
+      console.error("เกิดข้อผิดพลาดในการดึงข้อมูลสินค้าที่ใกล้หมดอายุ:", error);
+      // แสดง Alert หากเกิดข้อผิดพลาดในการดึงข้อมูล
+      Alert.alert("Error", "Unable to fetch nearly expired products.");
+    } finally {
+      // ตั้งค่า loading เป็น false เมื่อการดึงข้อมูลเสร็จสิ้น
+      setLoading(false);
+    }
+  };
+
+  // ฟังก์ชันสำหรับกลับไปยังหน้า Overview
   const handleGoBack = () => {
     navigation.navigate("Overview");
   };
 
+  // ฟังก์ชันสำหรับไปยังหน้า Login
   const handleGoToNext = () => {
     navigation.navigate("Login");
   };
 
+  // ฟังก์ชันสำหรับเมื่อผู้ใช้กดที่สินค้า เพื่อไปยังหน้าดูรายละเอียดสินค้า
   const handleProductPress = (product) => {
-    navigation.navigate("ShowDetailProduct", { product });
+    navigation.navigate("ShowDetailProduct", {
+      product,
+      onUpdate: (productId, updatedProduct) => {
+        // อัปเดตข้อมูลสินค้าใน state
+        setProducts((prevProducts) =>
+          prevProducts.map((item) =>
+            item._id === productId ? { ...item, ...updatedProduct } : item
+          )
+        );
+      },
+    });
   };
+
+  // แสดง Loading Indicator หากกำลังโหลดข้อมูล
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#ffffff" />
+      </View>
+    );
+  }
 
   return (
     <LinearGradient colors={["#93544d", "#FFFFFF"]} style={styles.container}>
+      {/* ปุ่มกลับไปยังหน้า Overview */}
       <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
         <Text style={styles.backButtonText}>← Overview</Text>
       </TouchableOpacity>
+      {/* หัวข้อของหน้าจอ */}
       <Text style={styles.header}>NearlyExpired</Text>
+      {/* FlatList สำหรับแสดงรายการสินค้าที่ใกล้หมดอายุ */}
       <FlatList
-        data={productData}
-        keyExtractor={(item) => item.id}
+        data={products}
+        keyExtractor={(item) => item._id}
         numColumns={2}
         columnWrapperStyle={styles.row}
         renderItem={({ item }) => (
           <TouchableOpacity style={styles.productCard} onPress={() => handleProductPress(item)}>
-            <Image source={item.image} style={styles.productImage} />
+            {/* รูปภาพสินค้า */}
+            <Image source={{ uri: item.photo }} style={styles.productImage} />
             <View style={styles.textBox}>
+              {/* ชื่อสินค้า */}
               <Text style={styles.productName}>{item.name}</Text>
-              <Text style={styles.productQuantity}>{item.quantity}</Text>
-              <Text style={styles.productExpDate}>EXP: {item.expDate}</Text>
+              {/* จำนวนสินค้า */}
+              <Text style={styles.productQuantity}>Quantity: {item.quantity}</Text>
+              {/* วันที่หมดอายุ */}
+              <Text style={styles.productExpDate}>
+                EXP: {new Date(item.expiration_date).toLocaleDateString()}
+              </Text>
             </View>
           </TouchableOpacity>
         )}
-        ListEmptyComponent={<Text style={styles.emptyText}>No products available</Text>}
+        // แสดงข้อความหากไม่มีสินค้าที่ใกล้หมดอายุ
+        ListEmptyComponent={<Text style={styles.emptyText}>No nearly expired products available</Text>}
       />
-
-   <TouchableOpacity style={styles.rightArrowButton} onPress={handleGoToNext}>
+      {/* ปุ่มสำหรับไปยังหน้า Login */}
+      <TouchableOpacity style={styles.rightArrowButton} onPress={handleGoToNext}>
         <View style={styles.rightArrowButtonCircle}>
           <Image
             source={require("../assets/images/exit.png")}
@@ -60,7 +135,7 @@ const NearlyExpiredScreen = ({ navigation }) => {
   );
 };
 
-
+// สไตล์สำหรับคอมโพเนนต์
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -148,12 +223,17 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 5,
   },
-  rightArrowImage: {
-    width: 20,
-    height: 20,
-    resizeMode: "contain",
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
-
+  emptyText: {
+    textAlign: "center",
+    marginTop: 20,
+    fontSize: 16,
+    color: "#555",
+  },
 });
 
 export default NearlyExpiredScreen;

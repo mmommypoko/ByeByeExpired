@@ -1,49 +1,123 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Image } from "react-native";
-import { LinearGradient } from "expo-linear-gradient"; // Import LinearGradient
-
-const productData = [
-  { id: "1", name: "เอโร่ ไข่ไก่ เบอร์ 3", quantity: "1 piece", expDate: "4 Mar 2025", image: require("../assets/images/egg.png") },
-  { id: "2", name: "ลูกชิ้นปลากลม", quantity: "1 piece", expDate: "2 Jan 2025", image: require("../assets/images/egg.png") },
-  { id: "3", name: "น้ำมะนาวคั้นสด", quantity: "1 piece", expDate: "9 Jan 2025", image: require("../assets/images/egg.png") },
-  { id: "4", name: "ไก่หมักกล้วยแช่แข็ง", quantity: "2 piece", expDate: "14 Jan 2025", image: require("../assets/images/egg.png") },
-  { id: "5", name: "เลือดไก่", quantity: "1 piece", expDate: "2 Feb 2025", image: require("../assets/images/egg.png") },
-  { id: "6", name: "เครื่องในไก่", quantity: "1 piece", expDate: "10 Feb 2025", image: require("../assets/images/egg.png") },
-];
+import React, { useState, useEffect } from "react";
+import {
+  View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Image,
+  ActivityIndicator, Alert
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import axios from "axios";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const StorageDryFoodScreen = ({ navigation }) => {
+  // State สำหรับเก็บคำค้นหา
   const [searchQuery, setSearchQuery] = useState("");
+  // State สำหรับเก็บข้อมูลสินค้าในหมวดอาหารแห้ง
   const [products, setProducts] = useState([]);
+  // State สำหรับตรวจสอบสถานะการโหลดข้อมูล
+  const [loading, setLoading] = useState(true);
+  // State สำหรับเก็บ user_id
+  const [userId, setUserId] = useState(null);
 
+  // useEffect สำหรับดึง user_id จาก AsyncStorage และดึงข้อมูลสินค้าในหมวดอาหารแห้ง
+  useEffect(() => {
+    const fetchUserId = async () => {
+      try {
+        // ดึง user_id จาก AsyncStorage
+        const storedUserId = await AsyncStorage.getItem('user_id');
+        if (storedUserId) {
+          setUserId(storedUserId);
+          // ดึงข้อมูลสินค้าในหมวดอาหารแห้ง
+          fetchDryFoodProducts(storedUserId);
+        } else {
+          console.log("No user ID found in AsyncStorage");
+        }
+      } catch (error) {
+        console.error("Error fetching userId from AsyncStorage:", error);
+      }
+    };
+
+    fetchUserId();
+  }, []);
+
+  // ฟังก์ชันสำหรับดึงข้อมูลสินค้าในหมวดอาหารแห้งจาก API
+  const fetchDryFoodProducts = async (userId) => {
+    try {
+      const response = await axios.get(
+        `https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/get_dry_food_items/${userId}`
+      );
+      // อัปเดต state products ด้วยข้อมูลที่ได้จาก API
+      setProducts(response.data);
+    } catch (error) {
+      console.error("Error fetching dry food products:", error);
+      Alert.alert("Error", "Unable to fetch products"); // ✅ เปลี่ยนข้อความเป็นภาษาอังกฤษ
+    } finally {
+      // ปิดสถานะการโหลด
+      setLoading(false);
+    }
+  };
+
+  // ฟังก์ชันสำหรับนำทางไปหน้าเพิ่มสินค้า
   const handleAddProduct = () => {
     navigation.navigate("AddProduct");
   };
 
+  // ฟังก์ชันสำหรับนำทางกลับไปหน้า Overview
   const handleGoBack = () => {
     navigation.navigate("Overview");
   };
 
-  // เปลี่ยนฟังก์ชัน handleGoToNext ให้ไปที่หน้า "Overview"
+  // ฟังก์ชันสำหรับนำทางไปหน้า Login
   const handleGoToNext = () => {
-    navigation.navigate("Login"); // เปลี่ยนการนำทางไปหน้า Overview
+    navigation.navigate("Login");
   };
 
+  // ฟังก์ชันสำหรับนำทางไปหน้าแสดงรายละเอียดสินค้า
   const handleProductPress = (product) => {
-    navigation.navigate("ShowDetailProduct", { product });
+    navigation.navigate("ShowDetailProduct", {
+      product,
+      onUpdate: (productId, updatedProduct) => {
+        // อัปเดตข้อมูลใน Local State
+        setProducts((prevProducts) =>
+          prevProducts.map((item) =>
+            item._id === productId ? { ...item, ...updatedProduct } : item
+          )
+        );
+      },
+    });
   };
+
+  // ฟังก์ชันสำหรับกรองสินค้าตามคำค้นหา (ค้นหาจากตัวอักษรแรก)
+  const filterProducts = (products, query) => {
+    if (!query) {
+      return products; // ถ้าไม่มีคำค้นหา ให้แสดงสินค้าทั้งหมด
+    }
+
+    // กรองสินค้าที่ชื่อเริ่มต้นด้วยคำค้นหา (ไม่สนใจตัวพิมพ์เล็ก-ใหญ่)
+    return products.filter((product) =>
+      product.name.toLowerCase().startsWith(query.toLowerCase())
+    );
+  };
+
+  // แสดง ActivityIndicator หากกำลังโหลดข้อมูล
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#BE9090" />
+      </View>
+    );
+  }
 
   return (
-    <LinearGradient
-      colors={["#FFFFFF", "#BE9090"]} // Gradient from white to #BE9090 (light pinkish color)
-      style={styles.container} // Apply gradient to container
-    >
-      {/* Back Button */}
+    // ใช้ LinearGradient สำหรับพื้นหลัง
+    <LinearGradient colors={["#FFFFFF", "#BE9090"]} style={styles.container}>
+      {/* ปุ่มกลับไปหน้า Overview */}
       <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
         <Text style={styles.backButtonText}>← Overview</Text>
       </TouchableOpacity>
 
+      {/* หัวข้อหน้า */}
       <Text style={styles.header}>DRY FOOD</Text>
 
+      {/* ช่องค้นหาสินค้า */}
       <TextInput
         style={styles.searchBox}
         placeholder="Search Product"
@@ -52,24 +126,32 @@ const StorageDryFoodScreen = ({ navigation }) => {
         onChangeText={setSearchQuery}
       />
 
-<FlatList
-        data={productData}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        columnWrapperStyle={styles.row}
+      {/* แสดงรายการสินค้าในรูปแบบ FlatList */}
+      <FlatList
+        data={filterProducts(products, searchQuery)} // กรองสินค้าตามคำค้นหา
+        keyExtractor={(item) => item._id} // ใช้ _id เป็น key
+        numColumns={2} // แสดงสินค้า 2 คอลัมน์
+        columnWrapperStyle={styles.row} // จัดวางสินค้าในแต่ละแถว
         renderItem={({ item }) => (
+          // การ์ดแสดงข้อมูลสินค้า
           <TouchableOpacity style={styles.productCard} onPress={() => handleProductPress(item)}>
-            <Image source={item.image} style={styles.productImage} />
+            {/* รูปภาพสินค้า */}
+            <Image source={{ uri: item.photo }} style={styles.productImage} />
+            {/* ข้อมูลสินค้า */}
             <View style={styles.textBox}>
               <Text style={styles.productName}>{item.name}</Text>
-              <Text style={styles.productQuantity}>{item.quantity}</Text>
-              <Text style={styles.productExpDate}>EXP: {item.expDate}</Text>
+              <Text style={styles.productQuantity}>Quantity: {item.quantity}</Text>
+              <Text style={styles.productExpDate}>
+                EXP: {new Date(item.expiration_date).toLocaleDateString()}
+              </Text>
             </View>
           </TouchableOpacity>
         )}
+        // แสดงข้อความเมื่อไม่มีสินค้า
         ListEmptyComponent={<Text style={styles.emptyText}>No products available</Text>}
       />
 
+      {/* ปุ่มเพิ่มสินค้า */}
       <View style={styles.addButtonContainer}>
         <View style={styles.addButtonBackground}>
           <TouchableOpacity style={styles.addButton} onPress={handleAddProduct}>
@@ -81,21 +163,20 @@ const StorageDryFoodScreen = ({ navigation }) => {
         </View>
       </View>
 
-      {/* Right Arrow Button with Image */}
+      {/* ปุ่มนำทางไปหน้า Login */}
       <TouchableOpacity style={styles.rightArrowButton} onPress={handleGoToNext}>
         <View style={styles.rightArrowButtonCircle}>
-          {/* Keep the image inside the circle */}
           <Image
             source={require("../assets/images/exit.png")}
             style={{ width: 35, height: 35 }}
           />
         </View>
       </TouchableOpacity>
-
     </LinearGradient>
   );
 };
 
+// สไตล์สำหรับ component
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -172,15 +253,16 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#D9534F",
   },
-  placeholderText: {
-    fontSize: 16,
-    color: "gray",
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   emptyText: {
     textAlign: "center",
     marginTop: 20,
     fontSize: 16,
-    color: "gray",
+    color: "#555",
   },
   addButtonContainer: {
     position: "absolute",
@@ -218,31 +300,23 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "bold",
   },
-
-  // Right arrow button styles with shadow
   rightArrowButton: {
     position: "absolute",
     top: 50,
     right: 20,
   },
   rightArrowButtonCircle: {
-    width: 35, // Size of the circle
-    height: 35, // Size of the circle
-    borderRadius: 18, // Circle shape
-    backgroundColor: "white", // Circle color
+    width: 35,
+    height: 35,
+    borderRadius: 18,
+    backgroundColor: "white",
     justifyContent: "center",
     alignItems: "center",
-    // Shadow effect
-    shadowColor: "#000", // Color of shadow
-    shadowOffset: { width: 0, height: 4 }, // Position of shadow
-    shadowOpacity: 0.2, // Shadow opacity
-    shadowRadius: 5, // Blur radius of shadow
-    elevation: 5, // For Android shadow
-  },
-  rightArrowImage: {
-    width: 20, // Image width
-    height: 20, // Image height
-    resizeMode: "contain", // Preserve aspect ratio
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 5,
   },
 });
 

@@ -9,11 +9,11 @@ export const getUserID = async () => {
       return userId;
     } else {
       console.log("No user_id found");
-      return null;
+      return null; // หากไม่พบจะคืนค่า null
     }
   } catch (error) {
     console.error("Error fetching user_id:", error);
-    return null;
+    return null; // คืนค่า null หากเกิดข้อผิดพลาด
   }
 };
 
@@ -36,7 +36,19 @@ export const setUserID = async (userId) => {
 export const removeUserID = async () => {
   try {
     await AsyncStorage.removeItem('user_id');
+    console.log("User ID removed successfully");
   } catch (error) {
     console.error("Error removing user ID:", error);
+  }
+};
+
+// ฟังก์ชันตรวจสอบว่ามี user_id ใน AsyncStorage หรือไม่
+export const hasUserID = async () => {
+  try {
+    const userId = await AsyncStorage.getItem('user_id');
+    return userId !== null;
+  } catch (error) {
+    console.error("Error checking user ID:", error);
+    return false; // ถ้าเกิดข้อผิดพลาดให้คืนค่า false
   }
 };

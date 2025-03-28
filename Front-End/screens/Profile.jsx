@@ -11,12 +11,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const { width } = Dimensions.get("window");
 
 const ProfileScreen = () => {
+  // State สำหรับเก็บชื่อผู้ใช้
   const [name, setName] = useState("");
+  // State สำหรับเก็บอีเมลผู้ใช้
   const [email, setEmail] = useState("");
+  // State สำหรับตรวจสอบสถานะการแก้ไขชื่อ
   const [isEditing, setIsEditing] = useState(false); 
-  const [userId, setUserId] = useState(null); // เพิ่ม state สำหรับ userId
+  // State สำหรับเก็บ user_id
+  const [userId, setUserId] = useState(null);
   const navigation = useNavigation();
 
+  // useEffect สำหรับดึง user_id จาก AsyncStorage และดึงข้อมูลผู้ใช้
   useEffect(() => {
     const fetchUserId = async () => {
       try {
@@ -24,7 +29,7 @@ const ProfileScreen = () => {
         const storedUserId = await AsyncStorage.getItem('user_id');
         if (storedUserId) {
           setUserId(storedUserId);
-          fetchUserData(storedUserId);
+          fetchUserData(storedUserId); // เรียกฟังก์ชันดึงข้อมูลผู้ใช้
         } else {
           console.log("No user ID found in AsyncStorage");
         }
@@ -32,25 +37,24 @@ const ProfileScreen = () => {
         console.error("Error fetching userId from AsyncStorage:", error);
       }
     };
-
+  
     fetchUserId();
   }, []);
-
+  
+  // ฟังก์ชันสำหรับดึงข้อมูลผู้ใช้จาก API
   const fetchUserData = (userId) => {
     if (userId) {
-      console.log("Sending userId:", userId);
-      axios.get(`https://bug-free-telegram-x5597wr5w69gc9qr9-5001.app.github.dev/get_user/${userId}`)
+      axios.get(`https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/get_user/${userId}`)
         .then(response => {
-          console.log("API Response:", response.data);
           setName(response.data.name);
           setEmail(response.data.email);
         })
         .catch(error => {
           console.error("API Error:", error.response ? error.response.data : error.message);
           if (error.response && error.response.data.message === "User not found") {
-            Alert.alert("ไม่พบผู้ใช้", "ไม่มีข้อมูลผู้ใช้ที่ตรงกับ userId นี้");
+            Alert.alert("User Not Found", "No user data found for this userId"); // ✅ เปลี่ยนข้อความเป็นภาษาอังกฤษ
           } else {
-            Alert.alert("เกิดข้อผิดพลาด", "ไม่สามารถดึงข้อมูลผู้ใช้ได้");
+            Alert.alert("Error", "Unable to fetch user data"); // ✅ เปลี่ยนข้อความเป็นภาษาอังกฤษ
           }
         });
     }
@@ -59,50 +63,48 @@ const ProfileScreen = () => {
   // ฟังก์ชันบันทึกชื่อที่แก้ไข
   const saveName = async () => {
     if (!userId) {
-      Alert.alert("ข้อมูลไม่ครบถ้วน", "ไม่พบ userId");
+      Alert.alert("Incomplete Data", "userId not found"); // ✅ เปลี่ยนข้อความเป็นภาษาอังกฤษ
       return;
     }
     try {
-      await axios.put('https://bug-free-telegram-x5597wr5w69gc9qr9-5001.app.github.dev/update_name', {
+      await axios.put('https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/update_name', {
         user_id: userId,
         name: name,
       });
-      Alert.alert("สำเร็จ", "ชื่อของคุณถูกอัปเดตแล้ว");
+      Alert.alert("Success", "Your name has been updated"); // ✅ เปลี่ยนข้อความเป็นภาษาอังกฤษ
       setIsEditing(false);
     } catch (error) {
       console.error(error);
-      Alert.alert("เกิดข้อผิดพลาด", "ไม่สามารถอัปเดตชื่อได้");
+      Alert.alert("Error", "Unable to update name"); // ✅ เปลี่ยนข้อความเป็นภาษาอังกฤษ
     }
   };
 
   // ฟังก์ชันสำหรับลบบัญชี
   const deleteAccount = async () => {
     if (!userId) {
-      Alert.alert("ข้อมูลไม่ครบถ้วน", "ไม่พบ userId");
+      Alert.alert("Incomplete Data", "userId not found"); // ✅ เปลี่ยนข้อความเป็นภาษาอังกฤษ
       return;
     }
   
-    // แสดงการแจ้งเตือนก่อนทำการลบบัญชี
     Alert.alert(
-      "ลบบัญชี",
-      "คุณแน่ใจหรือว่าต้องการลบบัญชีนี้? การลบไม่สามารถกู้คืนได้.",
+      "Delete Account",
+      "Are you sure you want to delete your account? This action cannot be undone.",
       [
-        { text: "ยกเลิก" },
+        { text: "Cancel" },
         { 
-          text: "ลบบัญชี", 
+          text: "Delete Account", 
           onPress: async () => {
             try {
-              // ส่ง request ลบบัญชี
-              const response = await axios.delete('https://bug-free-telegram-x5597wr5w69gc9qr9-5001.app.github.dev/delete_account', {
+              const response = await axios.delete('https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/delete_account', {
                 data: { user_id: userId },
               });
               if (response.status === 200) {
-                Alert.alert('บัญชีของคุณถูกลบเรียบร้อยแล้ว');
+                Alert.alert('Success', 'Your account has been deleted'); // ✅ เปลี่ยนข้อความเป็นภาษาอังกฤษ
                 navigation.navigate("Login"); // กลับไปที่หน้าล็อกอินหลังลบบัญชี
               }
             } catch (error) {
               console.error(error);
-              Alert.alert('เกิดข้อผิดพลาดในการลบบัญชี');
+              Alert.alert('Error', 'Failed to delete account'); // ✅ เปลี่ยนข้อความเป็นภาษาอังกฤษ
             }
           }
         },
@@ -110,6 +112,7 @@ const ProfileScreen = () => {
     );
   };
 
+  // ฟังก์ชันสำหรับปิดคีย์บอร์ดเมื่อผู้ใช้แตะที่พื้นหลัง
   const handleOutsidePress = () => {
     Keyboard.dismiss();
   };
@@ -120,15 +123,18 @@ const ProfileScreen = () => {
         source={require("../assets/images/background profile.png")} 
         style={styles.background}
       >
+        {/* พื้นหลังรูปภาพ */}
         <Image 
           source={require("../assets/images/ground profile.png")} 
           style={styles.profileBackground} 
         />
 
+        {/* ส่วนหัวข้อ "My Profile" */}
         <View style={styles.myProfileContainer}>
           <Text style={styles.myProfileText}>My Profile</Text>
         </View>
 
+        {/* ปุ่มกลับไปหน้า Overview */}
         <TouchableOpacity 
           style={styles.topRightButton} 
           onPress={() => navigation.navigate("Overview")}
@@ -139,12 +145,15 @@ const ProfileScreen = () => {
           />
         </TouchableOpacity>
 
+        {/* ส่วนแสดงข้อมูลโปรไฟล์ */}
         <View style={styles.profileContainer}>
+          {/* รูปภาพโปรไฟล์ */}
           <Image 
             source={require("../assets/images/profile11.png")} 
             style={styles.profileImage} 
           />
 
+          {/* ชื่อผู้ใช้และปุ่มแก้ไข */}
           <View style={styles.nameContainer}>
             {isEditing ? (
               <TextInput
@@ -166,9 +175,11 @@ const ProfileScreen = () => {
             </TouchableOpacity>
           </View>
 
+          {/* อีเมลผู้ใช้ */}
           <Text style={styles.profileEmail}>{email}</Text>
         </View>
 
+        {/* ปุ่ม Log Out */}
         <TouchableOpacity 
           style={styles.LogOutButton}
           onPress={() => navigation.navigate("Login")}
@@ -188,6 +199,7 @@ const ProfileScreen = () => {
   );
 };
 
+// สไตล์สำหรับ component
 const styles = StyleSheet.create({
   background: {
     flex: 1,
