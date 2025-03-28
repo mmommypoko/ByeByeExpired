@@ -48,11 +48,11 @@ export default function App() {
       try {
         if (userId) {
           // ดึงข้อมูลสินค้าใกล้หมดอายุ
-          const nearlyExpiredResponse = await axios.get(`https://cuddly-space-lamp-jj4jqr7jvg5q2qvpg-5000.app.github.dev/get_nearly_expired_items/${userId}`);
+          const nearlyExpiredResponse = await axios.get(`https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/get_nearly_expired_items/${userId}`);
           setNearlyExpired(nearlyExpiredResponse.data);
 
           // ดึงข้อมูลสินค้าหมดอายุ
-          const expiredResponse = await axios.get(`https://cuddly-space-lamp-jj4jqr7jvg5q2qvpg-5000.app.github.dev/get_expired_items/${userId}`);
+          const expiredResponse = await axios.get(`https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/get_expired_items/${userId}`);
           setExpired(expiredResponse.data);
         }
       } catch (error) {
@@ -68,15 +68,15 @@ export default function App() {
       try {
         if (userId) {
           // ดึงข้อมูลจำนวนสินค้าใน Fridge
-          const fridgeResponse = await axios.get(`https://cuddly-space-lamp-jj4jqr7jvg5q2qvpg-5000.app.github.dev/get_fridge_items/${userId}`);
+          const fridgeResponse = await axios.get(`https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/get_fridge_items/${userId}`);
           const fridgeCount = fridgeResponse.data.length;
 
           // ดึงข้อมูลจำนวนสินค้าใน Freezer
-          const freezerResponse = await axios.get(`https://cuddly-space-lamp-jj4jqr7jvg5q2qvpg-5000.app.github.dev/get_freezer_items/${userId}`);
+          const freezerResponse = await axios.get(`https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/get_freezer_items/${userId}`);
           const freezerCount = freezerResponse.data.length;
 
           // ดึงข้อมูลจำนวนสินค้าใน Dry Food
-          const dryFoodResponse = await axios.get(`https://cuddly-space-lamp-jj4jqr7jvg5q2qvpg-5000.app.github.dev/get_dry_food_items/${userId}`);
+          const dryFoodResponse = await axios.get(`https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/get_dry_food_items/${userId}`);
           const dryFoodCount = dryFoodResponse.data.length;
 
           // อัปเดต state storage

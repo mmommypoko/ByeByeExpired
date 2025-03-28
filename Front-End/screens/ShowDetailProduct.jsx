@@ -73,7 +73,7 @@ const ShowDetailofProduct = ({ route, navigation }) => {
 
       // ส่งข้อมูลไปยังเซิร์ฟเวอร์เพื่ออัปเดต
       const response = await axios.put(
-        `https://ominous-barnacle-x5rv457rpx5x3969-5000.app.github.dev/update_item/${editedProduct._id}`,
+        `https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/update_item/${editedProduct._id}`,
         updatedProduct
       );
 
@@ -129,7 +129,7 @@ const ShowDetailofProduct = ({ route, navigation }) => {
 
               // ส่ง Request ลบสินค้าไปยังเซิร์ฟเวอร์
               const response = await axios.delete(
-                `https://ominous-barnacle-x5rv457rpx5x3969-5000.app.github.dev/delete_item/${editedProduct._id}`
+                `https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/delete_item/${editedProduct._id}`
               );
 
               // ถ้าลบสำเร็จ

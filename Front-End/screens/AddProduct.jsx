@@ -94,7 +94,7 @@ const AddProductScreen = ({ navigation }) => {
 
     try {
       let response = await axios.post(
-        "https://ominous-barnacle-x5rv457rpx5x3969-5000.app.github.dev/upload",
+        "https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/upload",
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
@@ -153,7 +153,7 @@ const AddProductScreen = ({ navigation }) => {
     //ส่งข้อมูลไปยังเซิร์ฟเวอร์
     try {
       const response = await axios.post(
-        "https://ominous-barnacle-x5rv457rpx5x3969-5000.app.github.dev/add_item",//: ส่ง HTTP POST Request ไปยัง URL ของเซิร์ฟเวอร์
+        "https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/add_item",//: ส่ง HTTP POST Request ไปยัง URL ของเซิร์ฟเวอร์
         productData,
         { headers: { "Content-Type": "application/json" } }//กำหนด Header ของ Request เป็น application/json เพื่อบอกเซิร์ฟเวอร์ว่าข้อมูลที่ส่งไปเป็น JSON
       );

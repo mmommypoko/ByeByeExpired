@@ -42,7 +42,7 @@ const StorageFridgeScreen = ({ navigation }) => {
   const fetchFridgeProducts = async (userId) => {
     try {
       const response = await axios.get(
-        `https://cuddly-space-lamp-jj4jqr7jvg5q2qvpg-5000.app.github.dev/get_fridge_items/${userId}`
+        `https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/get_fridge_items/${userId}`
       );
       // อัปเดต state products ด้วยข้อมูลที่ได้จาก API
       setProducts(response.data);

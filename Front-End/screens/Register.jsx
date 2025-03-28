@@ -39,7 +39,7 @@ const RegisterScreen = ({ navigation }) => {
 
     // เชื่อมกับ Backend เพื่อตรวจสอบว่าอีเมลซ้ำหรือไม่
     try {
-      const response = await fetch('https://cuddly-space-lamp-jj4jqr7jvg5q2qvpg-5000.app.github.dev/register', {
+      const response = await fetch('https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData),

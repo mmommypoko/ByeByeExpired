@@ -44,7 +44,7 @@ const ProfileScreen = () => {
   // ฟังก์ชันสำหรับดึงข้อมูลผู้ใช้จาก API
   const fetchUserData = (userId) => {
     if (userId) {
-      axios.get(`https://cuddly-space-lamp-jj4jqr7jvg5q2qvpg-5000.app.github.dev/get_user/${userId}`)
+      axios.get(`https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/get_user/${userId}`)
         .then(response => {
           setName(response.data.name);
           setEmail(response.data.email);
@@ -67,7 +67,7 @@ const ProfileScreen = () => {
       return;
     }
     try {
-      await axios.put('https://cuddly-space-lamp-jj4jqr7jvg5q2qvpg-5000.app.github.dev/update_name', {
+      await axios.put('https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/update_name', {
         user_id: userId,
         name: name,
       });
@@ -95,7 +95,7 @@ const ProfileScreen = () => {
           text: "Delete Account", 
           onPress: async () => {
             try {
-              const response = await axios.delete('https://cuddly-space-lamp-jj4jqr7jvg5q2qvpg-5000.app.github.dev/delete_account', {
+              const response = await axios.delete('https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/delete_account', {
                 data: { user_id: userId },
               });
               if (response.status === 200) {

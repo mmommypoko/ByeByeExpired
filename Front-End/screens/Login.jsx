@@ -25,7 +25,7 @@ const LoginScreen = ({ navigation }) => {
       // await ใช้เพื่อรอให้การส่ง request เสร็จสิ้นและได้รับ response จาก server.
       // fetch เป็นฟังก์ชันที่ใช้ส่ง HTTP request ไปยัง back-end
       // response คือ object ที่เก็บข้อมูลที่ได้จาก server หลังจากส่ง request
-      const response = await fetch('https://cuddly-space-lamp-jj4jqr7jvg5q2qvpg-5000.app.github.dev/login', {
+      const response = await fetch('https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/login', {
         method: 'POST', //HTTP method
         headers: { 'Content-Type': 'application/json' }, //ระบุว่าส่งข้อมูลไปในรูปแบบ JSON.
         body: JSON.stringify(loginData), // แปลง Object(loginData) เป็น JSON string เพื่อส่งไปยัง server.

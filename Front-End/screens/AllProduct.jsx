@@ -43,7 +43,7 @@ const AllProductScreen = ({ navigation }) => {
   const fetchProducts = async (userId) => {
     try {
       const response = await axios.get(
-        `https://cuddly-space-lamp-jj4jqr7jvg5q2qvpg-5000.app.github.dev/get_items/${userId}`
+        `https://fuzzy-space-giggle-pjw99rqj6ww5hgrg-5000.app.github.dev/get_items/${userId}`
       );
       setProducts(response.data);
     } catch (error) {
